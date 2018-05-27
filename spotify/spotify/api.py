@@ -21,7 +21,7 @@ def login():
     params = (
         ('client_id', app.config['CLIENT_ID']),
         ('response_type', 'code'),
-        ('redirect_uri', 'http://localhost:5000/callback'),
+        ('redirect_uri', REDIRECT_URI),
         ('scope', 'user-library-read'),
         ('show_dialog', 'true')
     )
