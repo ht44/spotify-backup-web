@@ -12,6 +12,3 @@ class SpotifyTrack:
         self.name = track['track']['name']
         self.artist = track['track']['artists'][0]['name']
         self.album = track['track']['album']['name']
-
-    def print_hi(self):
-        print('hello')

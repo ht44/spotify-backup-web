@@ -7,15 +7,13 @@ class Song(db.Model):
     album_id = db.Column(db.Integer, db.ForeignKey('album.id'),
                          nullable=False)
 
-    album = db.relationship('Album', backref='album', lazy=True, uselist=False)
+    # album = db.relationship('Album', backref='album', lazy=True, uselist=False)
 
     @property
-    def serialize(self):
+    def dict(self):
         return {
             'id': self.id,
-            'name': self.name,
-            'album_id': self.album_id,
-            'album_name': self.album.name
+            'name': self.name
         }
 
     def __repr__(self):

@@ -13,7 +13,7 @@ def get_songs():
     if request.method == 'GET':
         song = model.Song()
         records = song.query.all()
-        j = [r.serialize for r in records]
+        j = [r.dict for r in records]
         return jsonify(j)
     elif request.method == 'POST':
         song = model.Song(album_id=request.form['album_id'],
@@ -21,7 +21,7 @@ def get_songs():
         try:
             db.session.add(song)
             db.session.commit()
-            return jsonify(song.serialize)
+            return jsonify(song.dict)
         except exc.SQLAlchemyError as e:
             db.session.rollback()
             db.session.flush()
@@ -37,7 +37,7 @@ def get_artist(song_id):
             record = song.query.filter_by(id=song_id).first()
             if record is None:
                 return jsonify('not found')
-            return jsonify(record.serialize)
+            return jsonify(record.dict)
         except exc.SQLAlchemyError as e:
             message = e.args
             return jsonify(message)

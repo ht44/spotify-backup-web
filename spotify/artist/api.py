@@ -13,7 +13,7 @@ def get_artists():
     if request.method == 'GET':
         artist = model.Artist()
         records = artist.query.all()
-        j = [r.serialize for r in records]
+        j = [r.dict for r in records]
         return jsonify(j)
 
     elif request.method == 'POST':
@@ -21,7 +21,7 @@ def get_artists():
         try:
             db.session.add(artist)
             db.session.commit()
-            return jsonify(artist.serialize)
+            return jsonify(artist.dict)
         except exc.SQLAlchemyError as e:
             db.session.rollback()
             db.session.flush()
@@ -37,7 +37,7 @@ def get_artist(artist_id):
             record = artist.query.filter_by(id=artist_id).first()
             if record is None:
                 return jsonify('not found')
-            return jsonify(record.serialize)
+            return jsonify(record.dict)
         except exc.SQLAlchemyError as e:
             message = e.args
             return jsonify(message)
@@ -47,9 +47,29 @@ def get_artist(artist_id):
             record = artist.query.filter_by(id=artist_id).first()
             db.session.delete(record)
             db.session.commit()
-            return jsonify(record.serialize)
+            return jsonify(record.dict)
         except exc.SQLAlchemyError as e:
             db.session.rollback()
             db.session.flush()
             message = e.args
             return jsonify(message)
+
+
+@blueprint.route('/<artist_id>/albums', methods=['GET'])
+def get_artist_albums(artist_id):
+    if request.method == 'GET':
+        print(artist_id)
+        artist = model.Artist()
+        record = artist.query.filter_by(id=artist_id).first()
+        return jsonify(record.albums_dict)
+
+
+@blueprint.route('/<artist_id>/songs', methods=['GET'])
+def get_artist_songs(artist_id):
+    if request.method == 'GET':
+        print(artist_id)
+        artist = model.Artist()
+        record = artist.query.filter_by(id=artist_id).first()
+        # print(record.songs)
+        # print(record.songs_dict)
+        return jsonify(record.songs_dict)

@@ -7,22 +7,18 @@ class Album(db.Model):
     artist_id = db.Column(db.Integer, db.ForeignKey('artist.id'),
                           nullable=False)
 
-    songs = db.relationship('Song', backref='songs', lazy=True)
-    artist = db.relationship('Artist', backref='artist', lazy=True, uselist=False)
+    songs = db.relationship('Song', backref='album', lazy=True)
 
     @property
-    def serialize(self):
+    def dict(self):
         return {
             'id': self.id,
-            'name': self.name,
-            'artist_id': self.artist_id,
-            'artist': self.artist.name,
-            'songs': self.serialize_songs
+            'name': self.name
         }
 
     @property
-    def serialize_songs(self):
-        return [songs.serialize for songs in self.songs]
+    def songs_dict(self):
+        return [song.dict for song in self.songs]
 
     def __repr__(self):
         return '<Album %r>' % self.name

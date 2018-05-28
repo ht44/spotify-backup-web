@@ -1,14 +1,21 @@
 # -*- coding: utf-8 -*-
 """Spotify api."""
 from flask import Blueprint, jsonify, redirect, request, current_app as app
+from sqlalchemy import exc
+import json
 from spotify.constants import USER_LIB_ENDPOINT
 from spotify.spotify.model import SpotifyLibrary, SpotifyTrack
 from urllib.parse import urlencode
 from base64 import b64encode
 import requests
 from spotify.constants import TOKEN_ENDPOINT, REDIRECT_URI, LOGIN_ENDPOINT
+from spotify import song, album, artist
+from spotify.database import db
+from spotify.utils.models import get_or_create
+
 
 blueprint = Blueprint('spotify', __name__, url_prefix='/spotify')
+
 
 @blueprint.route('/')
 def songs():
@@ -66,16 +73,7 @@ def refresh():
     return jsonify(j)
 
 
-@blueprint.route('/tracks')
-def get_tracks():
-    auth_header = 'Authorization: Bearer {}'.format(app.config['SPOTIFY_ACCESS_TOKEN'])
-    headers = {'Authorization': auth_header}
-    r = requests.get(USER_LIB_ENDPOINT + '?limit=50', headers=headers)
-    j = r.json()
-    return jsonify(j)
-
-
-@blueprint.route('/llibrary')
+@blueprint.route('/library')
 def get_librarys():
 
     auth_header = 'Authorization: Bearer {}'.format(app.config['SPOTIFY_ACCESS_TOKEN'])
@@ -92,15 +90,31 @@ def get_librarys():
         if 'error' in j:
             return jsonify(j)
         result = result + j['items']
-
-    tracks = [SpotifyTrack(t) for t in result]
-    library = SpotifyLibrary(tracks)
-    return jsonify(library.to_list())
-
-    # spotify_tracks = [SpotifyTrack(t) for t in result]
     #
     # with open('all.json') as data_file:
-    #     data = json.load(data_file)
-    #     tracks = [SpotifyTrack(t) for t in data]
-    #     library = SpotifyLibrary(tracks)
-    #     return jsonify(library.to_list())
+    #     result = json.load(data_file)
+
+    tracks = [SpotifyTrack(t) for t in result]
+
+    library = SpotifyLibrary(tracks).to_list()
+    lib_tree = {}
+    print(len(library))
+    artists = list(set([s['artist'] for s in library]))
+    for y in artists:
+        lib_tree[y] = {'albums': {}}
+
+    for s in library:
+        a = s['album']
+        artist_albums = lib_tree[s['artist']]['albums']
+        if a not in artist_albums:
+            artist_albums[a] = {'songs': [s['name']]}
+        else:
+            artist_albums[a]['songs'].append(s['name'])
+
+    for key, value in lib_tree.items():
+        a = get_or_create(db.session, artist.model.Artist, name=key)
+        for k, v in value['albums'].items():
+            alb = get_or_create(db.session, album.model.Album, name=k, artist_id=a.id)
+            for s in v['songs']:
+                son = get_or_create(db.session, song.model.Song, name=s, album_id=alb.id)
+    return jsonify(lib_tree)

@@ -14,7 +14,7 @@ def get_albums():
     if request.method == 'GET':
         album = model.Album()
         records = album.query.all()
-        j = [r.serialize for r in records]
+        j = [r.dict for r in records]
         return jsonify(j)
     elif request.method == 'POST':
         album = model.Album(artist_id=request.form['artist_id'],
@@ -22,7 +22,7 @@ def get_albums():
         try:
             db.session.add(album)
             db.session.commit()
-            return jsonify(album.serialize)
+            return jsonify(album.dict)
         except exc.SQLAlchemyError as e:
             db.session.rollback()
             db.session.flush()
@@ -38,7 +38,7 @@ def get_artist(album_id):
             record = album.query.filter_by(id=album_id).first()
             if record is None:
                 return jsonify('not found')
-            return jsonify(record.serialize)
+            return jsonify(record.dict)
         except exc.SQLAlchemyError as e:
             message = e.args
             return jsonify(message)
@@ -46,7 +46,7 @@ def get_artist(album_id):
         try:
             album = model.Album()
             record = album.query.filter_by(id=album_id).first()
-            if record is  None:
+            if record is None:
                 return jsonify('not found')
             db.session.delete(record)
             db.session.commit()
@@ -56,3 +56,11 @@ def get_artist(album_id):
             db.session.flush()
             message = e.args
             return jsonify(message)
+
+
+@blueprint.route('/<album_id>/songs', methods=['GET'])
+def get_album_songs(album_id):
+    if request.method == 'GET':
+        album = model.Album()
+        record = album.query.filter_by(id=album_id).first()
+        return jsonify(record.songs_dict)
