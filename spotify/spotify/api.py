@@ -1,15 +1,14 @@
 # -*- coding: utf-8 -*-
 """Spotify api."""
 from flask import Blueprint, jsonify, redirect, request, current_app as app
-from sqlalchemy import exc
-import json
-from spotify.constants import USER_LIB_ENDPOINT
 from spotify.spotify.model import SpotifyLibrary, SpotifyTrack
 from urllib.parse import urlencode
 from base64 import b64encode
 import requests
 from spotify.constants import TOKEN_ENDPOINT, REDIRECT_URI, LOGIN_ENDPOINT
-from spotify import song, album, artist
+from spotify.song.model import Song
+from spotify.album.model import Album
+from spotify.artist.model import Artist
 from spotify.database import db
 from spotify.utils.models import get_or_create
 
@@ -112,9 +111,9 @@ def get_librarys():
             artist_albums[a]['songs'].append(s['name'])
 
     for key, value in lib_tree.items():
-        a = get_or_create(db.session, artist.model.Artist, name=key)
+        a = get_or_create(db.session, Artist, name=key)
         for k, v in value['albums'].items():
-            alb = get_or_create(db.session, album.model.Album, name=k, artist_id=a.id)
+            alb = get_or_create(db.session, Album, name=k, artist_id=a.id)
             for s in v['songs']:
-                son = get_or_create(db.session, song.model.Song, name=s, album_id=alb.id)
+                son = get_or_create(db.session, Song, name=s, album_id=alb.id)
     return jsonify(lib_tree)

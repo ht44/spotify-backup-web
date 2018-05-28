@@ -2,56 +2,50 @@
 """Song api."""
 from flask import Blueprint, request, jsonify
 from sqlalchemy import exc
-from . import model
+from .model import Song
+from .access import SongAccess
 from spotify.database import db
+
 
 blueprint = Blueprint('song', __name__, url_prefix='/songs')
 
 
 @blueprint.route('/', methods=['GET', 'POST'])
-def get_songs():
+def songs():
     if request.method == 'GET':
-        song = model.Song()
-        records = song.query.all()
-        j = [r.dict for r in records]
-        return jsonify(j)
-    elif request.method == 'POST':
-        song = model.Song(album_id=request.form['album_id'],
-                          name=request.form['name'])
+        song_access = SongAccess(Song, db.session)
+        name = request.args.get('name')
         try:
-            db.session.add(song)
-            db.session.commit()
-            return jsonify(song.dict)
+            if name:
+                records = song_access.search(name=name)
+            else:
+                records = song_access.list()
+            return jsonify([r.dict for r in records])
         except exc.SQLAlchemyError as e:
-            db.session.rollback()
-            db.session.flush()
-            message = e.args
-            return jsonify(message)
+            return jsonify(e.args)
+    elif request.method == 'POST':
+        song_access = SongAccess(Song, db.session)
+        try:
+            record = song_access.insert(album_id=request.form['album_id'],
+                                        name=request.form['name'])
+            return jsonify(record.dict)
+        except exc.SQLAlchemyError as e:
+            return jsonify(e.args)
 
 
 @blueprint.route('/<song_id>', methods=['GET', 'DELETE'])
-def get_artist(song_id):
+def song(song_id):
     if request.method == 'GET':
-        song = model.Song()
+        song_access = SongAccess(Song, db.session)
         try:
-            record = song.query.filter_by(id=song_id).first()
-            if record is None:
-                return jsonify('not found')
+            record = song_access.get(record_id=song_id)
             return jsonify(record.dict)
         except exc.SQLAlchemyError as e:
-            message = e.args
-            return jsonify(message)
+            return jsonify(e.args)
     elif request.method == 'DELETE':
+        song_access = SongAccess(Song, db.session)
         try:
-            song = model.Song()
-            record = song.query.filter_by(id=song_id).first()
-            if record is  None:
-                return jsonify('not found')
-            db.session.delete(record)
-            db.session.commit()
+            record = song_access.delete(record_id=song_id)
             return jsonify(record.id)
         except exc.SQLAlchemyError as e:
-            db.session.rollback()
-            db.session.flush()
-            message = e.args
-            return jsonify(message)
+            return jsonify(e.args)

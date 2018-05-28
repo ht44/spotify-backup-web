@@ -2,74 +2,71 @@
 """Artist api."""
 from flask import Blueprint, jsonify, request
 from sqlalchemy import exc
-from . import model
+from .model import Artist
+from .access import ArtistAccess
 from spotify.database import db
+
 
 blueprint = Blueprint('artist', __name__, url_prefix='/artists')
 
 
 @blueprint.route('/', methods=['GET', 'POST'])
-def get_artists():
+def artists():
     if request.method == 'GET':
-        artist = model.Artist()
-        records = artist.query.all()
-        j = [r.dict for r in records]
-        return jsonify(j)
-
-    elif request.method == 'POST':
-        artist = model.Artist(name=request.form['name'])
+        access = ArtistAccess(Artist, db.session)
+        name = request.args.get('name')
         try:
-            db.session.add(artist)
-            db.session.commit()
-            return jsonify(artist.dict)
+            if name is not None:
+                records = access.search(name=name)
+            else:
+                records = access.list()
+            return jsonify([r.dict for r in records])
         except exc.SQLAlchemyError as e:
-            db.session.rollback()
-            db.session.flush()
-            message = e.orig.args
-            return jsonify(message)
+            return jsonify(e.args)
+    elif request.method == 'POST':
+        access = ArtistAccess(Artist, db.session)
+        try:
+            record = access.insert(name=request.form['name'])
+            return jsonify(record.dict)
+        except exc.SQLAlchemyError as e:
+            return jsonify(e.args)
 
 
 @blueprint.route('/<artist_id>', methods=['GET', 'DELETE'])
-def get_artist(artist_id):
+def artist(artist_id):
     if request.method == 'GET':
-        artist = model.Artist()
+        access = ArtistAccess(Artist, db.session)
         try:
-            record = artist.query.filter_by(id=artist_id).first()
-            if record is None:
-                return jsonify('not found')
+            record = access.get(record_id=artist_id)
             return jsonify(record.dict)
         except exc.SQLAlchemyError as e:
-            message = e.args
-            return jsonify(message)
+            return jsonify(e.args)
     elif request.method == 'DELETE':
+        access = ArtistAccess(Artist, db.session)
         try:
-            artist = model.Artist()
-            record = artist.query.filter_by(id=artist_id).first()
-            db.session.delete(record)
-            db.session.commit()
+            record = access.delete(record_id=artist_id)
             return jsonify(record.dict)
         except exc.SQLAlchemyError as e:
-            db.session.rollback()
-            db.session.flush()
-            message = e.args
-            return jsonify(message)
+            return jsonify(e.args)
 
 
 @blueprint.route('/<artist_id>/albums', methods=['GET'])
-def get_artist_albums(artist_id):
+def albums(artist_id):
     if request.method == 'GET':
-        print(artist_id)
-        artist = model.Artist()
-        record = artist.query.filter_by(id=artist_id).first()
-        return jsonify(record.albums_dict)
+        access = ArtistAccess(Artist, db.session)
+        try:
+            record = access.get(record_id=artist_id)
+            return jsonify([r.dict for r in record.albums])
+        except exc.SQLAlchemyError as e:
+            return jsonify(e.args)
 
 
 @blueprint.route('/<artist_id>/songs', methods=['GET'])
-def get_artist_songs(artist_id):
+def songs(artist_id):
     if request.method == 'GET':
-        print(artist_id)
-        artist = model.Artist()
-        record = artist.query.filter_by(id=artist_id).first()
-        # print(record.songs)
-        # print(record.songs_dict)
-        return jsonify(record.songs_dict)
+        access = ArtistAccess(Artist, db.session)
+        try:
+            record = access.get(record_id=artist_id)
+            return jsonify(record.songs_dict)
+        except exc.SQLAlchemyError as e:
+            return jsonify(e.args)

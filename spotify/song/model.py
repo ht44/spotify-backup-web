@@ -7,8 +7,6 @@ class Song(db.Model):
     album_id = db.Column(db.Integer, db.ForeignKey('album.id'),
                          nullable=False)
 
-    # album = db.relationship('Album', backref='album', lazy=True, uselist=False)
-
     @property
     def dict(self):
         return {
