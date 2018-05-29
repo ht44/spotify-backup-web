@@ -24,7 +24,7 @@ def upgrade():
         text(
             """
                 CREATE OR REPLACE FUNCTION get_artist(_artist_id int)
-                RETURNS TABLE(id INT, name VARCHAR(150)) AS $$
+                RETURNS SETOF artist AS $$
                 BEGIN
                   RETURN QUERY SELECT
                     artist.id,
@@ -32,45 +32,44 @@ def upgrade():
                   FROM
                     artist
                   WHERE
-                    artist.id = _artist_id
-                  ORDER BY name ASC;
+                    artist.id = _artist_id;
                 END;
                 $$ LANGUAGE plpgsql;
                 
                 
                 CREATE OR REPLACE FUNCTION get_album(_album_id int)
-                RETURNS TABLE(id INT, name VARCHAR(150)) AS $$
+                RETURNS SETOF album AS $$
                 BEGIN
                   RETURN QUERY SELECT
                     album.id,
-                    album.name
+                    album.name,
+                    album.artist_id
                   FROM
                     album
                   WHERE
-                    album.id = _album_id
-                  ORDER BY name ASC;
+                    album.id = _album_id;
                 END;
                 $$ LANGUAGE plpgsql;
                 
                 
                 
                 CREATE OR REPLACE FUNCTION get_song(_song_id int)
-                RETURNS TABLE(id INT, name VARCHAR(150)) AS $$
+                RETURNS SETOF song AS $$
                 BEGIN
                   RETURN QUERY SELECT
                     song.id,
-                    song.name
+                    song.name,
+                    song.album_id
                   FROM
                     song
                   WHERE
-                    song.id = _song_id
-                  ORDER BY name ASC;
+                    song.id = _song_id;
                 END;
                 $$ LANGUAGE plpgsql;
                 
                 
                 CREATE OR REPLACE FUNCTION get_artists()
-                RETURNS TABLE(id INT, name VARCHAR(150)) AS $$
+                RETURNS SETOF artist AS $$
                 BEGIN
                   RETURN QUERY SELECT
                     artist.id,
@@ -83,11 +82,12 @@ def upgrade():
                 
                 
                 CREATE OR REPLACE FUNCTION get_albums()
-                RETURNS TABLE(id INT, name VARCHAR(150)) AS $$
+                RETURNS SETOF album AS $$
                 BEGIN
                   RETURN QUERY SELECT
                     album.id,
-                    album.name
+                    album.name,
+                    album.artist_id
                   FROM
                     album
                   ORDER BY name ASC;
@@ -96,11 +96,12 @@ def upgrade():
                 
                 
                 CREATE OR REPLACE FUNCTION get_songs()
-                RETURNS TABLE(id INT, name VARCHAR(150)) AS $$
+                RETURNS SETOF song AS $$
                 BEGIN
                   RETURN QUERY SELECT
                     song.id,
-                    song.name
+                    song.name,
+                    song.album_id
                   FROM
                     song
                   ORDER BY name ASC;
@@ -114,7 +115,9 @@ def upgrade():
                 RETURNS SETOF song AS $$
                 BEGIN
                   RETURN QUERY SELECT
-                    *
+                    song.id,
+                    song.name,
+                    song.album_id
                   FROM
                     song
                   WHERE
@@ -131,7 +134,9 @@ def upgrade():
                 RETURNS SETOF album AS $$
                 BEGIN
                   RETURN QUERY SELECT
-                    *
+                    album.id,
+                    album.name,
+                    album.artist_id
                   FROM
                     album
                   WHERE
@@ -161,25 +166,28 @@ def upgrade():
                 
                 
                 CREATE OR REPLACE FUNCTION get_artist_albums(_artist_id int)
-                RETURNS TABLE(album VARCHAR(150)) AS $$
+                RETURNS SETOF album AS $$
                 BEGIN
                   RETURN QUERY SELECT
-                    album.name as album
+                    album.id,
+                    album.name,
+                    album.artist_id
                   FROM
                     album
                   WHERE
                     album.artist_id = _artist_id
-                  ORDER BY album ASC;
+                  ORDER BY album.name ASC;
                 end;
                 $$ LANGUAGE plpgsql;
                 
                 
                 CREATE OR REPLACE FUNCTION get_artist_songs(_artist_id int)
-                RETURNS TABLE(song VARCHAR(150), album VARCHAR(150)) AS $$
+                RETURNS SETOF song AS $$
                 BEGIN
                   RETURN QUERY SELECT
-                    song.name as song,
-                    album.name as album
+                    song.id,
+                    song.name,
+                    song.album_id
                   FROM
                     album INNER JOIN song on song.album_id = album.id
                   WHERE
@@ -189,34 +197,68 @@ def upgrade():
                 $$ LANGUAGE plpgsql;
                 
                 
-                CREATE OR REPLACE FUNCTION get_album_songs(_album_id int)
-                RETURNS TABLE(song VARCHAR(150)) AS $$
+                CREATE OR REPLACE FUNCTION get_artist_discography(_artist_id int)
+                RETURNS TABLE(
+                  song_id INT,
+                  song_name VARCHAR(150),
+                  album_id INT,
+                  album_name VARCHAR(150)
+                  ) AS $$
                 BEGIN
                   RETURN QUERY SELECT
-                    song.name as song
+                    song.id as song_id,
+                    song.name as song_name,
+                    album.id as album_id,
+                    album.name as album_name
+                  FROM
+                    album INNER JOIN song on song.album_id = album.id
+                  WHERE
+                    album.artist_id = _artist_id
+                  ORDER BY album_name ASC, song_name ASC;
+                END;
+                $$ LANGUAGE plpgsql;
+                
+                
+                CREATE OR REPLACE FUNCTION get_album_songs(_album_id int)
+                RETURNS SETOF song AS $$
+                BEGIN
+                  RETURN QUERY SELECT
+                    song.id,
+                    song.name,
+                    song.album_id
                   FROM
                     song
                   WHERE
                     song.album_id = _album_id
-                  ORDER BY song ASC;
+                  ORDER BY song.name ASC;
                 END;
                 $$ LANGUAGE plpgsql;
                 
                 
                 CREATE OR REPLACE FUNCTION get_library()
-                RETURNS TABLE(song VARCHAR(150), album VARCHAR(150), artist VARCHAR(150)) AS $$
+                RETURNS TABLE(
+                    song_id INT,
+                    song_name VARCHAR(150),
+                    album_id INT,
+                    album_name VARCHAR(150),
+                    artist_id INT,
+                    artist_name VARCHAR(150)
+                ) AS $$
                 BEGIN
                   RETURN QUERY SELECT
-                    song.name as song,
-                    album.name as album,
-                    artist.name as artist
+                    song.id as song_id,
+                    song.name as song_name,
+                    album.id as album_id,
+                    album.name as album_name,
+                    artist.id as artist_id,
+                    artist.name as artist_name
                   FROM
                     song
                   INNER JOIN
                     album ON song.album_id = album.id
                   INNER JOIN
                     artist ON album.artist_id = artist.id
-                  ORDER BY artist ASC, album ASC, song ASC;
+                  ORDER BY artist_name ASC, album_name ASC, song_name ASC;
                 END
                 $$ LANGUAGE plpgsql;
                 
@@ -226,42 +268,37 @@ def upgrade():
                   _album VARCHAR(150) DEFAULT NULL,
                   _artist VARCHAR(150) DEFAULT NULL
                 )
-                RETURNS TABLE(song VARCHAR(150), album VARCHAR(150), artist VARCHAR(150)) AS $$
+                RETURNS TABLE(
+                    song_id INT,
+                    song_name VARCHAR(150),
+                    album_id INT,
+                    album_name VARCHAR(150),
+                    artist_id INT,
+                    artist_name VARCHAR(150)
+                ) AS $$
                 BEGIN
                   RETURN QUERY SELECT
-                    *
+                    song.id as song_id,
+                    song.name as song_name,
+                    album.id as album_id,
+                    album.name as album_name,
+                    artist.id as artist_id,
+                    artist.name as artist_name
                   FROM
-                    get_library() as library
+                    song
+                  INNER JOIN
+                    album ON song.album_id = album.id
+                  INNER JOIN
+                    artist ON album.artist_id = artist.id
                   WHERE
-                    (_song IS NULL OR library.song LIKE _song || '%')
+                    (_song IS NULL OR song.name LIKE _song || '%')
                   AND
-                    (_album IS NULL OR library.album LIKE _album || '%')
+                    (_album IS NULL OR album.name LIKE _album || '%')
                   AND
-                    (_artist IS NULL OR library.artist LIKE _artist || '%');
+                    (_artist IS NULL OR artist.name LIKE _artist || '%')
+                  ORDER BY artist_name ASC, album_name ASC, song_name ASC;
                 END
                 $$ LANGUAGE plpgsql;
-                
-                CREATE OR REPLACE FUNCTION search_library(
-                  _song VARCHAR(150) DEFAULT NULL,
-                  _album VARCHAR(150) DEFAULT NULL,
-                  _artist VARCHAR(150) DEFAULT NULL
-                )
-                RETURNS TABLE(song VARCHAR(150), album VARCHAR(150), artist VARCHAR(150)) AS $$
-                BEGIN
-                  RETURN QUERY SELECT
-                    *
-                  FROM
-                    get_library() as library
-                  WHERE
-                    (_song IS NULL OR library.song LIKE _song || '%')
-                  AND
-                    (_album IS NULL OR library.album LIKE _album || '%')
-                  AND
-                    (_artist IS NULL OR library.artist LIKE _artist || '%');
-                END
-                $$ LANGUAGE plpgsql;
-                
-                select * from get_artists()
             """
         ))
     pass
@@ -286,6 +323,7 @@ def downgrade():
                 DROP FUNCTION get_artist_songs(INTEGER);
                 DROP FUNCTION get_artist_albums(INTEGER);
                 DROP FUNCTION get_album_songs(INTEGER);
+                DROP FUNCTION get_artist_discography(INTEGER);
             """
         )
     )
