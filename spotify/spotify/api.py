@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 """Spotify api."""
+from pprint import pprint
+
 from flask import Blueprint, jsonify, redirect, request, current_app as app
 from spotify.spotify.model import SpotifyLibrary, SpotifyTrack
 from urllib.parse import urlencode
@@ -81,7 +83,6 @@ def get_librarys():
     j = r.json()
     if 'error' in j:
         return jsonify(j)
-
     result = j['items']
     while j['next']:
         r = requests.get(j['next'], headers=headers)
@@ -89,31 +90,17 @@ def get_librarys():
         if 'error' in j:
             return jsonify(j)
         result = result + j['items']
-    #
+
     # with open('all.json') as data_file:
     #     result = json.load(data_file)
 
     tracks = [SpotifyTrack(t) for t in result]
+    library = SpotifyLibrary(tracks).normalize()
 
-    library = SpotifyLibrary(tracks).to_list()
-    lib_tree = {}
-    print(len(library))
-    artists = list(set([s['artist'] for s in library]))
-    for y in artists:
-        lib_tree[y] = {'albums': {}}
-
-    for s in library:
-        a = s['album']
-        artist_albums = lib_tree[s['artist']]['albums']
-        if a not in artist_albums:
-            artist_albums[a] = {'songs': [s['name']]}
-        else:
-            artist_albums[a]['songs'].append(s['name'])
-
-    for key, value in lib_tree.items():
+    for key, value in library.items():
         a = get_or_create(db.session, Artist, name=key)
         for k, v in value['albums'].items():
             alb = get_or_create(db.session, Album, name=k, artist_id=a.id)
             for s in v['songs']:
                 son = get_or_create(db.session, Song, name=s, album_id=alb.id)
-    return jsonify(lib_tree)
+    return jsonify(library)
