@@ -291,11 +291,11 @@ def upgrade():
                   INNER JOIN
                     artist ON album.artist_id = artist.id
                   WHERE
-                    (_song IS NULL OR song.name LIKE _song || '%')
+                    (_song IS NULL OR song.name ILIKE _song || '%')
                   AND
-                    (_album IS NULL OR album.name LIKE _album || '%')
+                    (_album IS NULL OR album.name ILIKE _album || '%')
                   AND
-                    (_artist IS NULL OR artist.name LIKE _artist || '%')
+                    (_artist IS NULL OR artist.name ILIKE _artist || '%')
                   ORDER BY artist_name ASC, album_name ASC, song_name ASC;
                 END
                 $$ LANGUAGE plpgsql;
